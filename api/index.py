@@ -16,9 +16,9 @@ app.add_middleware(
 )
 
 # Load telemetry; assumes q-vercel-latency.json is in the same folder
-json_path = os.path.join(os.path.dirname(__file__), "q-vercel-latency.json")
-with open(json_path, "r") as f:
+with open("q-vercel-latency.json", "r") as f:
     data = pd.DataFrame(json.load(f))
+
 
 @app.post("/")
 async def latency_metrics(request: Request):
