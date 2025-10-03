@@ -1,0 +1,11 @@
+name: Email Step Test
+
+on:
+  workflow_dispatch:   # Allows you to trigger manually from the Actions tab
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: '[24f3001764@ds.study.iitm.ac.in](mailto:24f3001764@ds.study.iitm.ac.in)'
+        run: echo "Hello, world!"
