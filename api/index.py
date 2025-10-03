@@ -1,39 +1,46 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+import pandas as pd
 import numpy as np
+import os
+import json
 
 app = FastAPI()
 
+# Enable CORS for POST from any origin
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["POST"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
-# Load telemetry data on startup (adjust path/content for your bundle)
-import pandas as pd
-
-telemetry = pd.read_json("q-vercel-latency.json")  # Place your actual JSON here
+# Load telemetry; assumes q-vercel-latency.json is in the same folder
+json_path = os.path.join(os.path.dirname(__file__), "q-vercel-latency.json")
+with open(json_path, "r") as f:
+    data = pd.DataFrame(json.load(f))
 
 @app.post("/")
-async def metrics(request: Request):
+async def latency_metrics(request: Request):
     body = await request.json()
     regions = body.get("regions", [])
     threshold = body.get("threshold_ms", 180)
-    results = {}
-
+    result = {}
     for region in regions:
-        df = telemetry[telemetry["region"] == region]
-        avg_latency = float(df["latency"].mean())
-        p95_latency = float(np.percentile(df["latency"], 95))
-        avg_uptime = float(df["uptime"].mean())
-        breaches = int((df["latency"] > threshold).sum())
-
-        results[region] = {
-            "avg_latency": avg_latency,
-            "p95_latency": p95_latency,
-            "avg_uptime": avg_uptime,
-            "breaches": breaches
+        subset = data[data["region"] == region]
+        # handle if there are no records for a region
+        if not len(subset):
+            result[region] = {
+                "avg_latency": None,
+                "p95_latency": None,
+                "avg_uptime": None,
+                "breaches": 0,
+            }
+            continue
+        result[region] = {
+            "avg_latency": float(subset["latency"].mean()),
+            "p95_latency": float(np.percentile(subset["latency"], 95)),
+            "avg_uptime": float(subset["uptime"].mean()),
+            "breaches": int((subset["latency"] > threshold).sum()),
         }
-    return results
+    return result
